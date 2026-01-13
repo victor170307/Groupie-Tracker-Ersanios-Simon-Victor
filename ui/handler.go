@@ -8,7 +8,7 @@ import (
 	"groupie-tracker-gui/models"
 )
 
-// ServeHTML sends the HTML page with embedded artist data
+
 func ServeHTML(w http.ResponseWriter, artists []models.Artist) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	html := getHTMLTemplate(artists)

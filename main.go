@@ -10,13 +10,12 @@ import (
 )
 
 func main() {
-	// Fetch artists once at startup
+	
 	artists, err := api.FetchArtists()
 	if err != nil {
 		log.Fatal("Failed to fetch artists:", err)
 	}
 
-	// Serve static HTML and handle API routes
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ui.ServeHTML(w, artists)
 	})
