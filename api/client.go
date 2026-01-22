@@ -12,7 +12,6 @@ const (
 	relationsURL = "https://groupietrackers.herokuapp.com/api/relation"
 )
 
-// Structure interne pour décoder l'index des relations
 type relationIndex struct {
 	Index []models.Relation `json:"index"`
 }

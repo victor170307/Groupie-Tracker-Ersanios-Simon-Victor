@@ -28,8 +28,6 @@ func DefaultWindowSize() fyne.Size {
 	return fyne.NewSize(1200, 800)
 }
 
-// --- ECRAN 1 : GALERIE D'ARTISTES ---
-
 func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int]models.Relation) fyne.CanvasObject {
 	var filtered = artists
 
@@ -40,9 +38,8 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 	refreshGrid := func() {
 		grid.Objects = nil // On vide
 		for _, artist := range filtered {
-			a := artist // Capture de variable pour la closure
+			a := artist
 
-			// On crée la carte avec notre nouveau système sans bouton superposé
 			card := makeBigCard(a, func() {
 				win.SetContent(buildDetailScreen(win, a, relations[a.ID], artists, relations))
 			})
@@ -53,7 +50,6 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 
 	refreshGrid()
 
-	// Barre de recherche
 	search := widget.NewEntry()
 	search.SetPlaceHolder("Rechercher un artiste, une date, un concert...")
 	search.OnChanged = func(s string) {
@@ -61,7 +57,6 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 		refreshGrid()
 	}
 
-	// Titre
 	title := canvas.NewText("SoundTrap Collection", color.White)
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.TextSize = 28
@@ -74,41 +69,20 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 	)
 }
 
-// makeBigCard : Crée une carte visuelle et l'emballe dans notre ClickableCard
 func makeBigCard(artist models.Artist, onClick func()) fyne.CanvasObject {
-<<<<<<< HEAD
 	// 1. Image
 	img := AsyncImage(artist.Image, fyne.NewSize(180, 180))
-=======
-	img := AsyncImage(artist.Image, fyne.NewSize(220, 220))
-	img.ScaleMode = canvas.ImageScaleSmooth
-	img.FillMode = canvas.ImageFillContain
-
->>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
 	imgContainer := container.NewCenter(img)
-	imgContainer.Resize(fyne.NewSize(240, 240))
 
-<<<<<<< HEAD
-	// 2. Textes
 	nameLabel := widget.NewLabel(artist.Name)
 	nameLabel.Alignment = fyne.TextAlignCenter
 	nameLabel.TextStyle = fyne.TextStyle{Bold: true}
 	nameLabel.Wrapping = fyne.TextTruncate
-=======
-	nameLabel := widget.NewLabel(artist.Name)
-	nameLabel.Alignment = fyne.TextAlignCenter
-	nameLabel.TextStyle = fyne.TextStyle{Bold: true}
-	nameLabel.Wrapping = fyne.TextWrapWord
->>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
 
-	dateLabel := widget.NewLabel(fmt.Sprintf("Créé en %d", artist.CreationDate))
+	dateLabel := widget.NewLabel(fmt.Sprintf("Est. %d", artist.CreationDate))
 	dateLabel.Alignment = fyne.TextAlignCenter
 	dateLabel.TextStyle = fyne.TextStyle{Italic: true}
 
-<<<<<<< HEAD
-	// 3. Empilement Vertical
-=======
->>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
 	contentVBox := container.NewVBox(
 		imgContainer,
 		nameLabel,
@@ -117,27 +91,12 @@ func makeBigCard(artist models.Artist, onClick func()) fyne.CanvasObject {
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 60, G: 65, B: 80, A: 255})
 	bg.CornerRadius = 12
-
-<<<<<<< HEAD
-	// 5. Construction visuelle (Fond + Contenu)
-	// On ne met PAS de bouton ici pour éviter le voile gris au survol
 	visualCard := container.NewMax(
 		bg,
 		container.NewPadded(contentVBox),
 	)
-
-	// 6. On rend le tout cliquable proprement
 	return NewClickableCard(visualCard, onClick)
-=======
-	btn := widget.NewButton("", onClick)
-
-	paddedContent := container.NewPadded(contentVBox)
-
-	return container.NewMax(bg, paddedContent, btn)
->>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
 }
-
-// --- ECRAN 2 : DETAILS ---
 
 func buildDetailScreen(win fyne.Window, artist models.Artist, relation models.Relation, allArtists []models.Artist, allRelations map[int]models.Relation) fyne.CanvasObject {
 
@@ -205,8 +164,6 @@ func buildDetailScreen(win fyne.Window, artist models.Artist, relation models.Re
 	return container.NewBorder(btnBack, nil, nil, nil, split)
 }
 
-// --- UTILITAIRES ---
-
 func filterArtists(artists []models.Artist, query string) []models.Artist {
 	normQ := strings.ToLower(query)
 	if normQ == "" {
@@ -223,9 +180,6 @@ func filterArtists(artists []models.Artist, query string) []models.Artist {
 	return res
 }
 
-// --- WIDGET CLIQUABLE PERSONNALISÉ ---
-// Ce widget remplace le bouton invisible. Il capture le clic sans modifier le visuel (pas de hover gris).
-
 type ClickableCard struct {
 	widget.BaseWidget
 	content fyne.CanvasObject
@@ -238,19 +192,16 @@ func NewClickableCard(content fyne.CanvasObject, onTap func()) *ClickableCard {
 	return c
 }
 
-// Tapped implémente l'interface fyne.Tappable (déclenche le clic)
 func (c *ClickableCard) Tapped(_ *fyne.PointEvent) {
 	if c.onTap != nil {
 		c.onTap()
 	}
 }
 
-// CreateRenderer dit à Fyne comment dessiner le widget (juste afficher le contenu)
 func (c *ClickableCard) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(c.content)
 }
 
-// Cursor change la souris en "main" au survol (Interface desktop.Cursorable)
 func (c *ClickableCard) Cursor() desktop.Cursor {
 	return desktop.PointerCursor
 }
