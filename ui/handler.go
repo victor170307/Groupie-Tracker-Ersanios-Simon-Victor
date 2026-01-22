@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -32,16 +33,16 @@ func DefaultWindowSize() fyne.Size {
 func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int]models.Relation) fyne.CanvasObject {
 	var filtered = artists
 
-	// On utilise une grille avec 3 colonnes.
+	// Grille adaptative
 	grid := container.NewGridWithColumns(3)
 
-	// Fonction pour remplir la grille
+	// Fonction de rafraîchissement de la grille
 	refreshGrid := func() {
-		grid.Objects = nil // On vide la grille
+		grid.Objects = nil // On vide
 		for _, artist := range filtered {
-			a := artist
+			a := artist // Capture de variable pour la closure
 
-			// Création de la carte robuste
+			// On crée la carte avec notre nouveau système sans bouton superposé
 			card := makeBigCard(a, func() {
 				win.SetContent(buildDetailScreen(win, a, relations[a.ID], artists, relations))
 			})
@@ -60,7 +61,7 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 		refreshGrid()
 	}
 
-	// Titre stylisé
+	// Titre
 	title := canvas.NewText("SoundTrap Collection", color.White)
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.TextSize = 28
@@ -69,34 +70,27 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 	return container.NewBorder(
 		container.NewVBox(container.NewPadded(title), container.NewPadded(search)),
 		nil, nil, nil,
-		container.NewVScroll(container.NewPadded(grid)), // Scroll vertical
+		container.NewVScroll(container.NewPadded(grid)),
 	)
 }
 
-// makeBigCard : Version Corrigée (Layout VBox)
-// Cette version empile l'image et le texte pour éviter qu'ils disparaissent
+// makeBigCard : Crée une carte visuelle et l'emballe dans notre ClickableCard
 func makeBigCard(artist models.Artist, onClick func()) fyne.CanvasObject {
 	// 1. Image
-	// On force une taille fixe pour que l'alignement soit joli
 	img := AsyncImage(artist.Image, fyne.NewSize(180, 180))
-
-	// On centre l'image dans son conteneur
 	imgContainer := container.NewCenter(img)
 
 	// 2. Textes
-	// On utilise widget.Label car c'est plus stable que canvas.Text
 	nameLabel := widget.NewLabel(artist.Name)
 	nameLabel.Alignment = fyne.TextAlignCenter
 	nameLabel.TextStyle = fyne.TextStyle{Bold: true}
-	// Astuce : Si le texte est trop long, il sera coupé proprement
 	nameLabel.Wrapping = fyne.TextTruncate
 
 	dateLabel := widget.NewLabel(fmt.Sprintf("Est. %d", artist.CreationDate))
 	dateLabel.Alignment = fyne.TextAlignCenter
 	dateLabel.TextStyle = fyne.TextStyle{Italic: true}
 
-	// 3. EMPILEMENT VERTICAL (C'est ici que la magie opère)
-	// Image -> Nom -> Date
+	// 3. Empilement Vertical
 	contentVBox := container.NewVBox(
 		imgContainer,
 		nameLabel,
@@ -107,15 +101,15 @@ func makeBigCard(artist models.Artist, onClick func()) fyne.CanvasObject {
 	bg := canvas.NewRectangle(color.NRGBA{R: 60, G: 65, B: 80, A: 255})
 	bg.CornerRadius = 12
 
-	// 5. Bouton invisible (pour le clic)
-	btn := widget.NewButton("", onClick)
+	// 5. Construction visuelle (Fond + Contenu)
+	// On ne met PAS de bouton ici pour éviter le voile gris au survol
+	visualCard := container.NewMax(
+		bg,
+		container.NewPadded(contentVBox),
+	)
 
-	// 6. Assemblage final
-	// On ajoute du Padding (marge) pour que le contenu ne touche pas les bords
-	paddedContent := container.NewPadded(contentVBox)
-
-	// On superpose : Fond -> Contenu -> Bouton
-	return container.NewMax(bg, paddedContent, btn)
+	// 6. On rend le tout cliquable proprement
+	return NewClickableCard(visualCard, onClick)
 }
 
 // --- ECRAN 2 : DETAILS ---
@@ -126,17 +120,16 @@ func buildDetailScreen(win fyne.Window, artist models.Artist, relation models.Re
 		win.SetContent(buildListScreen(win, allArtists, allRelations))
 	})
 
-	// Image géante
 	img := AsyncImage(artist.Image, fyne.NewSize(300, 300))
 
-	name := widget.NewLabel(artist.Name)
+	name := canvas.NewText(artist.Name, color.White)
 	name.TextStyle = fyne.TextStyle{Bold: true}
+	name.TextSize = 24
 	name.Alignment = fyne.TextAlignCenter
 
 	meta := widget.NewLabel(fmt.Sprintf("Création: %d  •  1er Album: %s", artist.CreationDate, artist.FirstAlbum))
 	meta.Alignment = fyne.TextAlignCenter
 
-	// Concerts
 	concertsContainer := container.NewVBox()
 	concertsContainer.Add(widget.NewLabelWithStyle("Concerts & Lieux", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 
@@ -145,12 +138,12 @@ func buildDetailScreen(win fyne.Window, artist models.Artist, relation models.Re
 			locationName := loc
 			prettyName := strings.Title(strings.ReplaceAll(strings.ReplaceAll(locationName, "_", " "), "-", ", "))
 
-			// Bouton Map
 			btnGeo := widget.NewButton("📍 "+prettyName, func() {
 				go func() {
-					log.Println("GPS:", locationName)
+					log.Println("GPS Request:", locationName)
 					coords, err := api.GetCoordinates(locationName)
 					if err != nil {
+						log.Println("Erreur GPS:", err)
 						return
 					}
 					mapURL := fmt.Sprintf("https://www.openstreetmap.org/?mlat=%s&mlon=%s#map=12/%s/%s", coords.Lat, coords.Lon, coords.Lat, coords.Lon)
@@ -161,6 +154,7 @@ func buildDetailScreen(win fyne.Window, artist models.Artist, relation models.Re
 
 			lblDates := widget.NewLabel("📅 " + strings.Join(dates, ", "))
 			lblDates.TextStyle = fyne.TextStyle{Italic: true}
+			lblDates.Wrapping = fyne.TextWrapWord
 
 			concertsContainer.Add(btnGeo)
 			concertsContainer.Add(lblDates)
@@ -170,7 +164,6 @@ func buildDetailScreen(win fyne.Window, artist models.Artist, relation models.Re
 		concertsContainer.Add(widget.NewLabel("Aucune date prévue."))
 	}
 
-	// Layout Détails
 	textScroll := container.NewVScroll(container.NewVBox(
 		name,
 		meta,
@@ -203,4 +196,36 @@ func filterArtists(artists []models.Artist, query string) []models.Artist {
 		}
 	}
 	return res
+}
+
+// --- WIDGET CLIQUABLE PERSONNALISÉ ---
+// Ce widget remplace le bouton invisible. Il capture le clic sans modifier le visuel (pas de hover gris).
+
+type ClickableCard struct {
+	widget.BaseWidget
+	content fyne.CanvasObject
+	onTap   func()
+}
+
+func NewClickableCard(content fyne.CanvasObject, onTap func()) *ClickableCard {
+	c := &ClickableCard{content: content, onTap: onTap}
+	c.ExtendBaseWidget(c)
+	return c
+}
+
+// Tapped implémente l'interface fyne.Tappable (déclenche le clic)
+func (c *ClickableCard) Tapped(_ *fyne.PointEvent) {
+	if c.onTap != nil {
+		c.onTap()
+	}
+}
+
+// CreateRenderer dit à Fyne comment dessiner le widget (juste afficher le contenu)
+func (c *ClickableCard) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(c.content)
+}
+
+// Cursor change la souris en "main" au survol (Interface desktop.Cursorable)
+func (c *ClickableCard) Cursor() desktop.Cursor {
+	return desktop.PointerCursor
 }
