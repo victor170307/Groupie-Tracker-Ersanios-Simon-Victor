@@ -76,31 +76,49 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 
 // makeBigCard : Crée une carte visuelle et l'emballe dans notre ClickableCard
 func makeBigCard(artist models.Artist, onClick func()) fyne.CanvasObject {
+<<<<<<< HEAD
 	// 1. Image
 	img := AsyncImage(artist.Image, fyne.NewSize(180, 180))
-	imgContainer := container.NewCenter(img)
+=======
+	img := AsyncImage(artist.Image, fyne.NewSize(220, 220))
+	img.ScaleMode = canvas.ImageScaleSmooth
+	img.FillMode = canvas.ImageFillContain
 
+>>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
+	imgContainer := container.NewCenter(img)
+	imgContainer.Resize(fyne.NewSize(240, 240))
+
+<<<<<<< HEAD
 	// 2. Textes
 	nameLabel := widget.NewLabel(artist.Name)
 	nameLabel.Alignment = fyne.TextAlignCenter
 	nameLabel.TextStyle = fyne.TextStyle{Bold: true}
 	nameLabel.Wrapping = fyne.TextTruncate
+=======
+	nameLabel := widget.NewLabel(artist.Name)
+	nameLabel.Alignment = fyne.TextAlignCenter
+	nameLabel.TextStyle = fyne.TextStyle{Bold: true}
+	nameLabel.Wrapping = fyne.TextWrapWord
+>>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
 
-	dateLabel := widget.NewLabel(fmt.Sprintf("Est. %d", artist.CreationDate))
+	dateLabel := widget.NewLabel(fmt.Sprintf("Créé en %d", artist.CreationDate))
 	dateLabel.Alignment = fyne.TextAlignCenter
 	dateLabel.TextStyle = fyne.TextStyle{Italic: true}
 
+<<<<<<< HEAD
 	// 3. Empilement Vertical
+=======
+>>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
 	contentVBox := container.NewVBox(
 		imgContainer,
 		nameLabel,
 		dateLabel,
 	)
 
-	// 4. Fond de la carte
 	bg := canvas.NewRectangle(color.NRGBA{R: 60, G: 65, B: 80, A: 255})
 	bg.CornerRadius = 12
 
+<<<<<<< HEAD
 	// 5. Construction visuelle (Fond + Contenu)
 	// On ne met PAS de bouton ici pour éviter le voile gris au survol
 	visualCard := container.NewMax(
@@ -110,6 +128,13 @@ func makeBigCard(artist models.Artist, onClick func()) fyne.CanvasObject {
 
 	// 6. On rend le tout cliquable proprement
 	return NewClickableCard(visualCard, onClick)
+=======
+	btn := widget.NewButton("", onClick)
+
+	paddedContent := container.NewPadded(contentVBox)
+
+	return container.NewMax(bg, paddedContent, btn)
+>>>>>>> dbd67431a07f52576798c58a1128dcfdb49ad562
 }
 
 // --- ECRAN 2 : DETAILS ---
