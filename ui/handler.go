@@ -76,45 +76,35 @@ func buildListScreen(win fyne.Window, artists []models.Artist, relations map[int
 // makeBigCard : Version Corrigée (Layout VBox)
 // Cette version empile l'image et le texte pour éviter qu'ils disparaissent
 func makeBigCard(artist models.Artist, onClick func()) fyne.CanvasObject {
-	// 1. Image
-	// On force une taille fixe pour que l'alignement soit joli
-	img := AsyncImage(artist.Image, fyne.NewSize(180, 180))
+	img := AsyncImage(artist.Image, fyne.NewSize(220, 220))
+	img.ScaleMode = canvas.ImageScaleSmooth
+	img.FillMode = canvas.ImageFillContain
 
-	// On centre l'image dans son conteneur
 	imgContainer := container.NewCenter(img)
+	imgContainer.Resize(fyne.NewSize(240, 240))
 
-	// 2. Textes
-	// On utilise widget.Label car c'est plus stable que canvas.Text
 	nameLabel := widget.NewLabel(artist.Name)
 	nameLabel.Alignment = fyne.TextAlignCenter
 	nameLabel.TextStyle = fyne.TextStyle{Bold: true}
-	// Astuce : Si le texte est trop long, il sera coupé proprement
-	nameLabel.Wrapping = fyne.TextTruncate
+	nameLabel.Wrapping = fyne.TextWrapWord
 
-	dateLabel := widget.NewLabel(fmt.Sprintf("Est. %d", artist.CreationDate))
+	dateLabel := widget.NewLabel(fmt.Sprintf("Créé en %d", artist.CreationDate))
 	dateLabel.Alignment = fyne.TextAlignCenter
 	dateLabel.TextStyle = fyne.TextStyle{Italic: true}
 
-	// 3. EMPILEMENT VERTICAL (C'est ici que la magie opère)
-	// Image -> Nom -> Date
 	contentVBox := container.NewVBox(
 		imgContainer,
 		nameLabel,
 		dateLabel,
 	)
 
-	// 4. Fond de la carte
 	bg := canvas.NewRectangle(color.NRGBA{R: 60, G: 65, B: 80, A: 255})
 	bg.CornerRadius = 12
 
-	// 5. Bouton invisible (pour le clic)
 	btn := widget.NewButton("", onClick)
 
-	// 6. Assemblage final
-	// On ajoute du Padding (marge) pour que le contenu ne touche pas les bords
 	paddedContent := container.NewPadded(contentVBox)
 
-	// On superpose : Fond -> Contenu -> Bouton
 	return container.NewMax(bg, paddedContent, btn)
 }
 
