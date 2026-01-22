@@ -1,15 +1,18 @@
 package models
 
-const baseURL = "https://groupietrackers.herokuapp.com/api/artists"
-
 type Artist struct {
 	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Image        string   `json:"image"`
+	Image        string   `json:"image"` // "Image" avec I majuscule
+	Name         string   `json:"name"`  // "Name" avec N majuscule
 	Members      []string `json:"members"`
 	CreationDate int      `json:"creationDate"`
 	FirstAlbum   string   `json:"firstAlbum"`
-	LocationsURL string   `json:"locations"`
-	DatesURL     string   `json:"concertDates"`
-	RelationURL  string   `json:"relations"`
+	Locations    string   `json:"locations"`
+	ConcertDates string   `json:"concertDates"`
+	Relations    string   `json:"relations"`
+}
+
+type Relation struct {
+	ID             int                 `json:"id"`
+	DatesLocations map[string][]string `json:"datesLocations"`
 }
