@@ -20,3 +20,4 @@ func FetchArtists() ([]models.Artist, error) {
 	err = json.NewDecoder(resp.Body).Decode(&artists)
 	return artists, err
 }
+

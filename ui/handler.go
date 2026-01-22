@@ -1,109 +1,153 @@
 package ui
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
+    "fmt"
+    "strings"
+    "image/color"
+    "unicode"
 
-	"groupie-tracker-gui/models"
+    "groupie-tracker-gui/models"
+
+    "fyne.io/fyne/v2"
+    "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/canvas"
+    "fyne.io/fyne/v2/layout"
+    "fyne.io/fyne/v2/widget"
 )
 
+const appTitle = "SoundTrap"
 
-func ServeHTML(w http.ResponseWriter, artists []models.Artist) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := getHTMLTemplate(artists)
-	fmt.Fprint(w, html)
+func DefaultWindowSize() fyne.Size {
+    return fyne.NewSize(960, 720)
 }
 
-// ServeArtistsJSON returns filtered artists as JSON
-func ServeArtistsJSON(w http.ResponseWriter, artists []models.Artist) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(artists)
+func NewArtistScreen(artists []models.Artist) fyne.CanvasObject {
+    filtered := make([]models.Artist, len(artists))
+    copy(filtered, artists)
+
+    bg := canvas.NewLinearGradient(
+        color.NRGBA{R: 15, G: 15, B: 20, A: 255},
+        color.NRGBA{R: 35, G: 35, B: 45, A: 255},
+        90,
+    )
+
+    title := widget.NewLabel(appTitle)
+    title.TextStyle = fyne.TextStyle{Bold: true}
+    title.Alignment = fyne.TextAlignCenter
+    title.Wrapping = fyne.TextWrapWord
+
+    search := widget.NewEntry()
+    search.SetPlaceHolder("Rechercher par nom, membre ou annee")
+    status := widget.NewLabel(formatStatus(len(filtered)))
+
+    cards := container.NewVBox(buildArtistCards(filtered)...)
+    scroll := container.NewVScroll(cards)
+    scroll.SetMinSize(fyne.NewSize(0, 500))
+
+    search.OnChanged = func(query string) {
+        filtered = filterArtists(artists, query)
+        status.SetText(formatStatus(len(filtered)))
+        cards.Objects = buildArtistCards(filtered)
+        cards.Refresh()
+    }
+
+    header := container.NewVBox(
+        container.NewPadded(title),
+        container.NewPadded(search),
+    )
+
+    content := container.NewBorder(header, status, nil, nil, scroll)
+    padded := container.NewPadded(content)
+
+    return container.New(layout.NewMaxLayout(), bg, padded)
 }
 
-func getHTMLTemplate(artists []models.Artist) string {
-	artistsJSON, _ := json.Marshal(artists)
+func buildArtistCards(artists []models.Artist) []fyne.CanvasObject {
+    if len(artists) == 0 {
+        msg := canvas.NewText("Aucun artiste trouve", color.NRGBA{R: 220, G: 220, B: 220, A: 255})
+        msg.Alignment = fyne.TextAlignCenter
+        msg.TextStyle = fyne.TextStyle{Bold: true}
+        return []fyne.CanvasObject{container.NewCenter(msg)}
+    }
 
-	return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Groupie Tracker</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-        .search-box { margin-bottom: 20px; }
-        #search { width: 100%; padding: 15px; font-size: 16px; border: none; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .artists-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .artist-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; }
-        .artist-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.25); }
-        .artist-image { width: 100%; height: 200px; object-fit: cover; background: #f0f0f0; }
-        .artist-info { padding: 15px; }
-        .artist-name { font-size: 1.3em; font-weight: bold; color: #333; margin-bottom: 8px; }
-        .artist-members { font-size: 0.9em; color: #666; margin-bottom: 5px; }
-        .artist-date { font-size: 0.85em; color: #999; }
-        .no-results { text-align: center; color: white; font-size: 1.2em; padding: 40px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎸 Groupie Tracker</h1>
-        <div class="search-box">
-            <input type="text" id="search" placeholder="Search artist, member, date, location...">
-        </div>
-        <div class="artists-grid" id="artists-container"></div>
-        <div id="no-results" class="no-results" style="display: none;">No artists found</div>
-    </div>
+    items := make([]fyne.CanvasObject, 0, len(artists))
+    for _, artist := range artists {
+        items = append(items, makeArtistCard(artist))
+    }
+    return items
+}
 
-    <script>
-        const allArtists = ` + string(artistsJSON) + `;
-        const container = document.getElementById('artists-container');
-        const noResults = document.getElementById('no-results');
-        const searchInput = document.getElementById('search');
+func makeArtistCard(artist models.Artist) fyne.CanvasObject {
+    title := canvas.NewText(artist.Name, color.NRGBA{R: 240, G: 240, B: 240, A: 255})
+    title.TextStyle = fyne.TextStyle{Bold: true}
 
-        function render(artists) {
-            container.innerHTML = '';
-            if (artists.length === 0) {
-                noResults.style.display = 'block';
-                return;
-            }
-            noResults.style.display = 'none';
-            artists.forEach(artist => {
-                const card = document.createElement('div');
-                card.className = 'artist-card';
-                card.innerHTML = ` + "`" + `
-                    <img src="${artist.image}" alt="${artist.name}" class="artist-image" onerror="this.src='https://via.placeholder.com/250x200?text=No+Image'">
-                    <div class="artist-info">
-                        <div class="artist-name">${artist.name}</div>
-                        <div class="artist-members"><strong>Members:</strong> ${artist.members.join(', ')}</div>
-                        <div class="artist-date"><strong>Created:</strong> ${artist.creationDate}</div>
-                    </div>
-                ` + "`" + `;
-                container.appendChild(card);
-            });
+    subtitle := canvas.NewText(
+        fmt.Sprintf("Membres: %s", strings.Join(artist.Members, ", ")),
+        color.NRGBA{R: 200, G: 200, B: 200, A: 255},
+    )
+    subtitle.TextSize = 12
+
+    meta := canvas.NewText(
+        fmt.Sprintf("Creation: %d  •  1er album: %s", artist.CreationDate, artist.FirstAlbum),
+        color.NRGBA{R: 170, G: 170, B: 170, A: 255},
+    )
+    meta.TextSize = 11
+
+    cardBody := container.NewVBox(title, subtitle, meta)
+
+    cardBg := canvas.NewRectangle(color.NRGBA{R: 30, G: 35, B: 45, A: 220})
+    cardBg.CornerRadius = 8
+
+    padded := container.NewPadded(cardBody)
+    return container.New(layout.NewMaxLayout(), cardBg, padded)
+}
+
+func formatStatus(count int) string {
+    if count == 1 {
+        return "1 artiste"
+    }
+    return fmt.Sprintf("%d artistes", count)
+}
+
+func filterArtists(artists []models.Artist, query string) []models.Artist {
+    normQ := normalize(query)
+    if normQ == "" {
+        copied := make([]models.Artist, len(artists))
+        copy(copied, artists)
+        return copied
+    }
+
+    filtered := make([]models.Artist, 0, len(artists))
+
+    for _, artist := range artists {
+        if match(normQ,
+            artist.Name,
+            strings.Join(artist.Members, " "),
+            fmt.Sprint(artist.CreationDate),
+            artist.FirstAlbum,
+        ) {
+            filtered = append(filtered, artist)
         }
+    }
 
-        function filter(query) {
-            const q = query.toLowerCase();
-            return allArtists.filter(artist => {
-                if (artist.name.toLowerCase().includes(q)) return true;
-                if (artist.members.some(m => m.toLowerCase().includes(q))) return true;
-                if (artist.creationDate.toString().includes(q)) return true;
-                return false;
-            });
+    return filtered
+}
+
+func normalize(s string) string {
+    var b strings.Builder
+    for _, r := range strings.ToLower(s) {
+        if unicode.IsLetter(r) || unicode.IsDigit(r) {
+            b.WriteRune(r)
         }
+    }
+    return b.String()
+}
 
-        searchInput.addEventListener('input', (e) => {
-            const filtered = filter(e.target.value);
-            render(filtered);
-        });
-
-        // Initial render
-        render(allArtists);
-    </script>
-</body>
-</html>`
+func match(normQuery string, fields ...string) bool {
+    for _, f := range fields {
+        if strings.Contains(normalize(f), normQuery) {
+            return true
+        }
+    }
+    return false
 }
